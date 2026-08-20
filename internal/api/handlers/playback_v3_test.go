@@ -4150,15 +4150,3 @@ func TestTerminalAllowsAlternateFileV3CoversSubtitleForcedRefusals(t *testing.T)
 		t.Fatal("a nil terminal must not trigger an alternate-version retry")
 	}
 }
-
-func TestRetryTransportHWAccelV3(t *testing.T) {
-	// Explicit values bypass ffmpeg probing, keeping this host-independent.
-	if got := retryTransportHWAccelV3("videotoolbox", "/does/not/exist"); got != "none" {
-		t.Fatalf("videotoolbox retry accel = %q, want none (no alternate device to move to)", got)
-	}
-	for _, accel := range []string{"qsv", "vaapi", "nvenc", "none"} {
-		if got := retryTransportHWAccelV3(accel, "/does/not/exist"); got != accel {
-			t.Fatalf("%s retry accel = %q, want unchanged", accel, got)
-		}
-	}
-}
