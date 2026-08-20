@@ -23,6 +23,15 @@ Download delivery can now be spread across proxy and transcode nodes instead of 
 - Bandwidth-limited downloads stay on the API server so server-wide and per-user limits remain exact.
 - The existing `/file` and `/direct-download` routes are unchanged.
 
+### Use native VideoToolbox transcoding on macOS
+Mac mini, Mac Studio, and MacBook servers can now use Apple's native hardware video pipeline for Silo transcoding.
+- Detects a working H.264 VideoToolbox encoder before automatic selection and tracks HEVC support independently, so older Intel Macs can keep hardware H.264 while unsupported recipes fall back safely.
+- Keeps scaling and subtitle filters on software-visible frames while VideoToolbox handles compatible decode and encode work.
+- Preserves software decode for H.264 High 10 sources, including prepared downloads, while retaining hardware encode.
+- Uses VideoToolbox for SDR chapter-thumbnail decode and combines it with the existing opt-in software HDR tone-map path.
+- Exposes the setting consistently in initial setup, Admin Settings, hardware detection, and live activity labels.
+- Discovers Homebrew's full FFmpeg build on both Apple Silicon and Intel Macs so native installs retain subtitle burn-in and the complete playback filter set.
+
 ## 2026-08-19
 
 ### Scope API keys to the admin routes they need

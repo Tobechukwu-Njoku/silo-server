@@ -1,7 +1,20 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import PlaybackSettings from "./PlaybackSettings";
+
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+if (!window.HTMLElement.prototype.hasPointerCapture) {
+  window.HTMLElement.prototype.hasPointerCapture = () => false;
+  window.HTMLElement.prototype.scrollIntoView = () => {};
+}
 
 const useSettingsFormMock = vi.fn();
 
@@ -46,13 +59,23 @@ describe("PlaybackSettings CPU tone mapping", () => {
       }),
     );
 
-    const toggle = cpuToneMapSwitch(renderToStaticMarkup(<PlaybackSettings />));
+    const markup = renderToStaticMarkup(<PlaybackSettings />);
+    const toggle = cpuToneMapSwitch(markup);
 
     expect(useSettingsFormMock.mock.calls[0]?.[0]?.keys).toContain(
       "playback.chapter_thumbnail_software_tone_map_enabled",
     );
     expect(toggle).toHaveAttribute("aria-checked", "false");
     expect(toggle).not.toHaveAttribute("disabled");
+  });
+
+  it("offers VideoToolbox hardware acceleration", async () => {
+    useSettingsFormMock.mockReturnValue(makeForm({ "playback.hw_accel": "auto" }));
+
+    render(<PlaybackSettings />);
+    await userEvent.click(screen.getByRole("combobox", { name: "Hardware Acceleration" }));
+
+    expect(screen.getByRole("option", { name: "VideoToolbox (macOS)" })).toBeInTheDocument();
   });
 
   it("disables the toggle while HDR chapter thumbnails are disabled", () => {

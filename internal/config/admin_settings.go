@@ -54,7 +54,7 @@ var adminSettingDefaults = map[string]string{
 	"markers.mode":          "local",
 	"markers.lazy_playback": "false",
 
-	"playback.ffmpeg_path":                     "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+	"playback.ffmpeg_path":                     "",
 	playbackTranscodeDirSettingKey:             DefaultTranscodeDir,
 	"playback.hw_accel":                        "auto",
 	"playback.transcode_enabled":               "true",
@@ -372,7 +372,7 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 	case "userdb.backend":
 		return normalizeAdminEnum(key, value, "postgres", "sqlite")
 	case "playback.hw_accel":
-		return normalizeAdminEnum(key, value, "auto", "qsv", "vaapi", "nvenc", "none")
+		return normalizeAdminEnum(key, value, "auto", "qsv", "vaapi", "nvenc", "videotoolbox", "none")
 	case "playback.chapter_thumbnail_execution":
 		return normalizeAdminEnum(key, value, "local", "prefer_transcode_nodes", "transcode_nodes_only")
 	case "playback.chapter_thumbnail_hdr_policy":

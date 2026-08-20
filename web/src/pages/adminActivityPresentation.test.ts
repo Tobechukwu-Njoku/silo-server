@@ -139,6 +139,9 @@ describe("adminActivityPresentation", () => {
 
   it("labels hardware and software transcode modes", () => {
     expect(formatTranscodeModeSummary(makeSession({ transcode_hw_accel: "qsv" }))).toBe("HW QSV");
+    expect(formatTranscodeModeSummary(makeSession({ transcode_hw_accel: "videotoolbox" }))).toBe(
+      "HW VideoToolbox",
+    );
     expect(formatTranscodeModeSummary(makeSession({ transcode_hw_accel: "none" }))).toBe("SW");
     expect(
       formatTranscodeModeSummary(

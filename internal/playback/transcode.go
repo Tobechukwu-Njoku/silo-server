@@ -99,12 +99,16 @@ type TranscodeOpts struct {
 const DV7ToHDR10BitstreamFilter = "dovi_rpu=strip=1"
 
 const (
-	transcodeCodecH264      = "h264"
-	transcodeHWQSV          = "qsv"
-	transcodeHWVAAPI        = "vaapi"
-	transcodeHWNVENC        = "nvenc"
-	transcodeHWVideoToolbox = "videotoolbox"
-	transcodeHWNone         = "none"
+	transcodeCodecH264       = "h264"
+	transcodeHWQSV           = "qsv"
+	transcodeHWVAAPI         = "vaapi"
+	transcodeHWNVENC         = "nvenc"
+	transcodeHWVideoToolbox  = "videotoolbox"
+	transcodeHWNone          = "none"
+	transcodeResolution480p  = "480p"
+	transcodeResolution720p  = "720p"
+	transcodeResolution1080p = "1080p"
+	transcodeResolution2160p = "2160p"
 )
 
 // TranscodeSession manages a running ffmpeg HLS transcode process.
@@ -378,6 +382,7 @@ func resolveSoftwareVideoDecode(opts TranscodeOpts) TranscodeOpts {
 // must pass through this helper so streaming and prepared-file recipes cannot
 // disagree about whether a source may use hardware decode or encode.
 func normalizeTranscodeOpts(opts TranscodeOpts) TranscodeOpts {
+	opts.FFmpegPath = ResolveFFmpegPath(opts.FFmpegPath)
 	opts = resolveSoftwareVideoDecode(opts)
 	opts.HWAccel = resolveEffectiveTranscodeHWAccel(opts)
 	return opts
@@ -513,6 +518,13 @@ func resolveEffectiveTranscodeHWAccel(opts TranscodeOpts) string {
 	}
 	if IsMPEG4Part2VideoCodec(opts.SourceVideoCodec) {
 		return "none"
+	}
+	if hwAccel == transcodeHWVideoToolbox {
+		if ok, reason := videoToolboxSupportsTargetCodec(opts.FFmpegPath, opts.TargetCodecVideo); !ok {
+			slog.Warn("VideoToolbox target encoder unavailable; using software encoding",
+				"target_codec", opts.TargetCodecVideo, "reason", reason)
+			return transcodeHWNone
+		}
 	}
 	// The bundled CUDA software-decode upload path has not been validated.
 	// Prefer the established libx264 fallback over selecting a decoder known
@@ -765,27 +777,12 @@ func appendVideoArgs(args []string, opts TranscodeOpts) []string {
 		// path); VideoToolbox has no 10-bit H.264 encode.
 		args = append(args, "-c:v", "h264_videotoolbox",
 			"-pix_fmt", "yuv420p", "-profile:v", "high")
-		if hasBitrateCap {
-			args = append(args,
-				"-b:v", fmt.Sprintf("%dk", opts.TargetBitrateKbps),
-				"-maxrate", fmt.Sprintf("%dk", opts.TargetBitrateKbps),
-				"-bufsize", fmt.Sprintf("%dk", opts.TargetBitrateKbps*2))
-		} else {
-			// Constant-quality mode (1-100 scale, hardware-rate-controlled).
-			args = append(args, "-q:v", "65")
-		}
+		args = appendVideoToolboxRateControl(args, opts)
 	case opts.HWAccel == transcodeHWVideoToolbox && codec == "hevc":
 		// pix_fmt is left to the input: 10-bit sources encode as p010
 		// (HDR10 passthrough), matching the other hardware HEVC paths.
 		args = append(args, "-c:v", "hevc_videotoolbox")
-		if hasBitrateCap {
-			args = append(args,
-				"-b:v", fmt.Sprintf("%dk", opts.TargetBitrateKbps),
-				"-maxrate", fmt.Sprintf("%dk", opts.TargetBitrateKbps),
-				"-bufsize", fmt.Sprintf("%dk", opts.TargetBitrateKbps*2))
-		} else {
-			args = append(args, "-q:v", "60")
-		}
+		args = appendVideoToolboxRateControl(args, opts)
 	default:
 		// CPU fallback — match Jellyfin's proven browser-compatible settings.
 		// Force yuv420p to ensure 8-bit output (10-bit sources produce High 10
@@ -804,6 +801,26 @@ func appendVideoArgs(args []string, opts TranscodeOpts) []string {
 	}
 
 	return args
+}
+
+func appendVideoToolboxRateControl(args []string, opts TranscodeOpts) []string {
+	bitrateKbps := opts.TargetBitrateKbps
+	if bitrateKbps <= 0 {
+		bitrateKbps = map[string]int{
+			transcodeResolution480p:  1_500,
+			transcodeResolution720p:  2_000,
+			transcodeResolution1080p: 6_000,
+			transcodeResolution2160p: 20_000,
+		}[opts.TargetResolution]
+		if bitrateKbps == 0 {
+			bitrateKbps = 6_000
+		}
+	}
+	return append(args,
+		"-b:v", fmt.Sprintf("%dk", bitrateKbps),
+		"-maxrate", fmt.Sprintf("%dk", bitrateKbps),
+		"-bufsize", fmt.Sprintf("%dk", bitrateKbps*2),
+	)
 }
 
 // appendVideoFilterArgs appends the -vf selection for an encoding (non-copy)
@@ -995,7 +1012,7 @@ func appendSubtitleBurnInArgs(args []string, opts TranscodeOpts) []string {
 	if opts.subtitleFilterInputPath != "" {
 		subtitleInputPath = opts.subtitleFilterInputPath
 	}
-	subFilter := fmt.Sprintf("subtitles='%s':si=%d",
+	subFilter := fmt.Sprintf("subtitles=filename='%s':si=%d",
 		escapeFilterPath(subtitleInputPath), opts.SubtitleTrackIndex)
 
 	// Build the CPU filter portion: scale (if any) then subtitle overlay.
