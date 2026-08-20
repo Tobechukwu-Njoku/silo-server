@@ -15,6 +15,12 @@ import (
 
 const darwinGOOS = "darwin"
 
+const (
+	ffmpegFlagHideBanner = "-hide_banner"
+	ffmpegFlagLogLevel   = "-loglevel"
+	ffmpegLogLevelError  = "error"
+)
+
 var (
 	defaultDRIDir              = "/dev/dri"
 	defaultNVIDIAControlDevice = "/dev/nvidiactl"
@@ -209,19 +215,34 @@ func videoToolboxSupportsTargetCodec(ffmpegPath, codec string) (bool, string) {
 }
 
 func cachedVideoToolboxProbe(ffmpegPath string) hardwareProbeResult {
-	ffmpegPath = normalizeFFmpegPath(ffmpegPath)
+	// Cache on the cleaned spelling, but execute the exact path the transcode
+	// will run: filepath.Clean turns "./ffmpeg-full" into a bare name, which
+	// would probe a PATH binary instead of the configured file.
+	execPath := probeExecFFmpegPath(ffmpegPath)
+	cacheKey := normalizeFFmpegPath(ffmpegPath)
 	videoToolboxProbeCache.Lock()
-	if result, ok := videoToolboxProbeCache.byPath[ffmpegPath]; ok {
+	if result, ok := videoToolboxProbeCache.byPath[cacheKey]; ok {
 		videoToolboxProbeCache.Unlock()
 		return result
 	}
 	videoToolboxProbeCache.Unlock()
 
-	result := probeFFmpegVideoToolbox(ffmpegPath)
+	result := probeFFmpegVideoToolbox(execPath)
 	videoToolboxProbeCache.Lock()
-	videoToolboxProbeCache.byPath[ffmpegPath] = result
+	videoToolboxProbeCache.byPath[cacheKey] = result
 	videoToolboxProbeCache.Unlock()
 	return result
+}
+
+// probeExecFFmpegPath returns the binary a capability probe must execute for
+// the configured path: the configured spelling verbatim (relative paths
+// included), or the process-global discovery when unset.
+func probeExecFFmpegPath(ffmpegPath string) string {
+	ffmpegPath = strings.TrimSpace(ffmpegPath)
+	if ffmpegPath == "" {
+		return ffmpegBinary()
+	}
+	return ffmpegPath
 }
 
 // probeFFmpegVideoToolbox verifies the configured FFmpeg exposes VideoToolbox
@@ -249,8 +270,8 @@ func probeFFmpegVideoToolbox(ffmpegPath string) hardwareProbeResult {
 
 	smoke := func(encoder string, extraArgs ...string) ([]byte, error) {
 		args := []string{
-			"-hide_banner",
-			"-loglevel", "error",
+			ffmpegFlagHideBanner,
+			ffmpegFlagLogLevel, ffmpegLogLevelError,
 			"-f", "lavfi",
 			"-i", "testsrc2=size=640x360:rate=1",
 			"-frames:v", "1",
