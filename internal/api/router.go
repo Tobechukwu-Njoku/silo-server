@@ -2894,6 +2894,7 @@ func NewRouter(deps Dependencies) chi.Router {
 							r.Post("/jellyfin-compat/web/update", adminHandler.HandleUpdateJellyfinCompatWeb)
 							r.Post("/jellyfin-compat/web/remove", adminHandler.HandleRemoveJellyfinCompatWeb)
 							r.Get("/settings/sensitive-status", adminHandler.HandleGetSensitiveStatus)
+							r.Get("/settings/restart-keys", adminHandler.HandleGetRestartKeys)
 							r.Post("/settings/check/{kind}", adminHandler.HandleCheckSettingsConnection)
 							if sectionSettingsHandler != nil {
 								r.Get("/settings/sections", sectionSettingsHandler.HandleGet)

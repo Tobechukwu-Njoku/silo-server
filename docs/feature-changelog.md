@@ -2,6 +2,12 @@
 
 ## 2026-08-21
 
+### Reorganize admin settings into 9 tabs with Essential/Advanced tiers
+Admin settings collapse from 20 tabs across four sidebar groups into 9 tabs under a single promoted "Settings" sidebar group, cutting duplicate homes for the same concern (subtitles, look & feel, email, scanning, transcoding) down to one each. Autoscan moves from its own sidebar page into a Libraries tab.
+- Each tab shows Essential controls by default and puts the rest behind one collapsible "Advanced" disclosure per section; a third, unlisted Hidden tier keeps settings that have no UI readable and writable through the API exactly as before.
+- Old `?tab=` links to the previous 20 tabs keep working via redirects to their new home.
+- The `⌘K` command palette now mounts globally in `AdminLayout` instead of only on the Dashboard, so settings search works from any admin page.
+
 ### Admin accounts are never capped by an access group
 An account promoted to admin kept its access group, so the Default Group's stream cap and library list still applied to it. Admins are now ungrouped everywhere: promoting clears the group, demoting lands the account on the default group unless the request names one, and `POST /admin/users`, `PUT /admin/users/{id}`, and `POST /admin/invitations` reject `role: "admin"` together with an `access_group_id` with `422`. Policy resolution ignores any group an admin row still carries, and a migration clears the admins that were grouped before this change.
 

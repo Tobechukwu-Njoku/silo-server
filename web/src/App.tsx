@@ -54,7 +54,6 @@ import AdminDiagnostics from "@/pages/AdminDiagnostics";
 import AdminAccessGroups from "@/pages/AdminAccessGroups";
 import AdminUsers from "@/pages/AdminUsers";
 import AdminRequests from "@/pages/AdminRequests";
-import AdminAutoscan from "@/pages/AdminAutoscan";
 import AdminDevices from "@/pages/AdminDevices";
 import AdminLibraries from "@/pages/AdminLibraries";
 import AdminSettingsLayout from "@/pages/admin-settings/AdminSettingsLayout";
@@ -444,7 +443,11 @@ function AppRoutes() {
                   <Route path="collections/new" element={<AdminCollectionEditor />} />
                   <Route path="collections/:id/edit" element={<AdminCollectionEditor />} />
                   <Route path="requests" element={<AdminRequests />} />
-                  <Route path="autoscan" element={<AdminAutoscan />} />
+                  {/* Autoscan is a tab on Libraries now; keep old links working. */}
+                  <Route
+                    path="autoscan"
+                    element={<Navigate to="/admin/libraries?tab=autoscan" replace />}
+                  />
                   <Route path="history" element={<AdminPlaybackHistory />} />
                   <Route path="marker-history" element={<AdminMarkerHistory />} />
                   <Route path="history-import" element={<AdminHistoryImport />} />
