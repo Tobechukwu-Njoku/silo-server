@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import PlaybackSettings from "./PlaybackSettings";
 
 const useSettingsFormMock = vi.fn();
+const useAdminServerStatusMock = vi.fn();
 
 vi.mock("@/hooks/useSettingsForm", () => ({
   useSettingsForm: (...args: unknown[]) => useSettingsFormMock(...args),
@@ -15,6 +16,10 @@ vi.mock("@/hooks/useRestartKeys", () => ({
 
 vi.mock("@/hooks/queries/admin/system", () => ({
   useHWAccelDetection: () => ({ data: undefined, isLoading: false }),
+}));
+
+vi.mock("@/hooks/queries/admin/settings", () => ({
+  useAdminServerStatus: () => useAdminServerStatusMock(),
 }));
 
 function makeForm(values: Record<string, string>, dirty: string[] = []) {
@@ -59,6 +64,8 @@ const TONE_MAP_LABEL = "Convert HDR colors on the CPU when the GPU cannot";
 beforeEach(() => {
   localStorage.clear();
   useSettingsFormMock.mockReset();
+  useAdminServerStatusMock.mockReset();
+  useAdminServerStatusMock.mockReturnValue({ data: undefined });
 });
 
 describe("PlaybackSettings layout", () => {
@@ -72,6 +79,29 @@ describe("PlaybackSettings layout", () => {
     });
 
     expect(headings).toEqual(["Transcoding", "Watch behavior", "Downloads"]);
+  });
+
+  it("summarises the tab in the status strip under the title", () => {
+    useSettingsFormMock.mockReturnValue(
+      makeForm({ "playback.hw_accel": "none", "playback.transcode_enabled": "true" }),
+    );
+
+    const container = parse(renderToStaticMarkup(<PlaybackSettings />));
+
+    expect(container.textContent).toContain("Playback");
+    expect(container.textContent).toContain("Transcoding on");
+    expect(container.textContent).toContain("Software encoding");
+  });
+
+  it("shows restart pending from the server status even without a save this session", () => {
+    useSettingsFormMock.mockReturnValue(
+      makeForm({ "playback.hw_accel": "none", "playback.transcode_enabled": "true" }),
+    );
+    useAdminServerStatusMock.mockReturnValue({ data: { restart_required: true } });
+
+    const container = parse(renderToStaticMarkup(<PlaybackSettings />));
+
+    expect(container.textContent).toContain("Restart pending");
   });
 
   it("manages both the playback and download key families in one form", () => {

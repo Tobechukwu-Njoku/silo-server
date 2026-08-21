@@ -2,9 +2,12 @@
 
 ## 2026-08-21
 
-### Reorganize admin settings into 9 tabs with Essential/Advanced tiers
-Admin settings collapse from 20 tabs across four sidebar groups into 9 tabs under a single promoted "Settings" sidebar group, cutting duplicate homes for the same concern (subtitles, look & feel, email, scanning, transcoding) down to one each. Autoscan moves from its own sidebar page into a Libraries tab.
-- Each tab shows Essential controls by default and puts the rest behind one collapsible "Advanced" disclosure per section; a third, unlisted Hidden tier keeps settings that have no UI readable and writable through the API exactly as before.
+### Rebuild admin settings around a status-first overview and 11 sections
+Admin settings collapse from 20 tabs across four sidebar groups into an Overview plus 11 sections under a single promoted "Settings" sidebar group, cutting duplicate homes for the same concern (subtitles, look & feel, email, scanning, transcoding) down to one each. Autoscan moves from its own sidebar page into a Libraries tab.
+- `/admin/settings` now opens on an Overview: server health across the top, then one card per section showing what it is actually doing right now — the theme in use, whether SMTP can send, which providers are connected — with a search that matches those live values.
+- The old catch-all Integrations tab splits into three sections that stand on their own: Subtitles & Metadata, Watch sync (Trakt, Simkl), and AI.
+- Each section is redesigned to read as a document rather than a stack of panels: a left rail with a health dot per section, settings as rows in ruled groups, Advanced inline as one disclosure per group, provider tiles that expand in place to test a credential before saving, a floating save pill for staged edits, and a single restart prompt for the whole settings area.
+- Each section shows Essential controls by default and puts the rest behind that Advanced disclosure; a third, unlisted Hidden tier keeps settings that have no UI readable and writable through the API exactly as before.
 - Old `?tab=` links to the previous 20 tabs keep working via redirects to their new home.
 - The `⌘K` command palette now mounts globally in `AdminLayout` instead of only on the Dashboard, so settings search works from any admin page.
 
