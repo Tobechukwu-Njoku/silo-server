@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import PlaybackSettings from "./PlaybackSettings";
 
 const useSettingsFormMock = vi.fn();
-const useAdminServerStatusMock = vi.fn();
 
 vi.mock("@/hooks/useSettingsForm", () => ({
   useSettingsForm: (...args: unknown[]) => useSettingsFormMock(...args),
@@ -16,10 +15,6 @@ vi.mock("@/hooks/useRestartKeys", () => ({
 
 vi.mock("@/hooks/queries/admin/system", () => ({
   useHWAccelDetection: () => ({ data: undefined, isLoading: false }),
-}));
-
-vi.mock("@/hooks/queries/admin/settings", () => ({
-  useAdminServerStatus: () => useAdminServerStatusMock(),
 }));
 
 function makeForm(values: Record<string, string>, dirty: string[] = []) {
@@ -59,13 +54,11 @@ function expandAdvanced() {
   localStorage.setItem("silo.admin.advanced.playback.downloads", "true");
 }
 
-const TONE_MAP_LABEL = "Convert HDR colors on the CPU when the GPU cannot";
+const TONE_MAP_LABEL = "Software HDR tone mapping";
 
 beforeEach(() => {
   localStorage.clear();
   useSettingsFormMock.mockReset();
-  useAdminServerStatusMock.mockReset();
-  useAdminServerStatusMock.mockReturnValue({ data: undefined });
 });
 
 describe("PlaybackSettings layout", () => {
@@ -81,27 +74,26 @@ describe("PlaybackSettings layout", () => {
     expect(headings).toEqual(["Transcoding", "Watch behavior", "Downloads"]);
   });
 
-  it("summarises the tab in the status strip under the title", () => {
+  it("opens with the title alone: no breadcrumb, lede, or status strip", () => {
     useSettingsFormMock.mockReturnValue(
       makeForm({ "playback.hw_accel": "none", "playback.transcode_enabled": "true" }),
     );
 
     const container = parse(renderToStaticMarkup(<PlaybackSettings />));
 
-    expect(container.textContent).toContain("Playback");
-    expect(container.textContent).toContain("Transcoding on");
-    expect(container.textContent).toContain("Software encoding");
+    expect(container.querySelector("h2")?.textContent).toBe("Playback");
+    expect(container.textContent).not.toContain("Settings ›");
+    expect(container.textContent).not.toContain("Transcoding on");
+    expect(container.textContent).not.toContain("Restart pending");
   });
 
-  it("shows restart pending from the server status even without a save this session", () => {
-    useSettingsFormMock.mockReturnValue(
-      makeForm({ "playback.hw_accel": "none", "playback.transcode_enabled": "true" }),
-    );
-    useAdminServerStatusMock.mockReturnValue({ data: { restart_required: true } });
+  it("puts the percent unit beside the control instead of in the label", () => {
+    useSettingsFormMock.mockReturnValue(makeForm({ "playback.watched_threshold": "90" }));
 
     const container = parse(renderToStaticMarkup(<PlaybackSettings />));
 
-    expect(container.textContent).toContain("Restart pending");
+    expect(labelled(container, "Mark watched at")).toHaveAttribute("value", "90");
+    expect(container.textContent).not.toContain("Mark watched at (%)");
   });
 
   it("manages both the playback and download key families in one form", () => {
