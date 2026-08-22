@@ -1,5 +1,10 @@
 # Feature Changelog
 
+## 2026-08-22
+
+### Keep per-connection watch-provider setup on later syncs
+Connecting a plugin watch provider with a profile-specific server URL or secret only applied those values to the initial API-key exchange. Scheduled sync, token refresh, scrobble, and export then fell back to the installation-wide config, so a household member's personal server was ignored after connect. The overlay is now stored with the connection's encrypted plugin credentials and merged on every authenticated plugin RPC.
+
 ## 2026-08-21
 
 ### Admin accounts are never capped by an access group
