@@ -1098,6 +1098,14 @@ func TestHandleStartAndPrepareRejectInvalidRequests(t *testing.T) {
 			SessionID: "unversioned-copy", InputPath: "/media/movie.mkv",
 			TargetCodecVideo: "copy",
 		}},
+		{name: "start with session id outside the transcode root", body: TranscodeStartRequest{
+			SessionID: "../sibling", InputPath: "/media/movie.mkv",
+			TargetCodecVideo: "h264", TargetCodecAudio: "aac", SegmentDuration: 2,
+		}},
+		{name: "start with session id naming the transcode root", body: TranscodeStartRequest{
+			SessionID: ".", InputPath: "/media/movie.mkv",
+			TargetCodecVideo: "h264", TargetCodecAudio: "aac", SegmentDuration: 2,
+		}},
 		{name: "start with unapproved input path", catalogPaths: true,
 			body: json.RawMessage(`{"session_id":"unsafe-input","input_path":"http://example.test/movie.mkv"}`)},
 		{name: "prepare with partial stereo downmix recipe", prepare: true, body: downloadprepare.Request{

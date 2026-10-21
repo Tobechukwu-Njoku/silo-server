@@ -1257,6 +1257,14 @@ func (s *Server) sessionOutputDir(sessionID string) string {
 	return filepath.Join(s.transcodeDir, sessionID)
 }
 
+// validSessionID reports whether sessionID names exactly one directory under
+// the transcode root. sessionOutputDir joins it unchecked, and stop and the
+// reapers RemoveAll that path, so "." would delete the whole root and ".." or
+// a separator would reach a sibling.
+func validSessionID(sessionID string) bool {
+	return sessionID != "" && sessionID != "." && sessionID != ".." && !strings.ContainsAny(sessionID, "/\\\x00")
+}
+
 func (s *Server) handleDownloadArtifact(w http.ResponseWriter, r *http.Request) {
 	defer s.trackInFlight()()
 	artifactID := chi.URLParam(r, "artifact_id")
@@ -1659,6 +1667,10 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "session_id and input_path are required", http.StatusBadRequest)
 		return
 	}
+	if !validSessionID(req.SessionID) {
+		http.Error(w, "invalid session_id", http.StatusBadRequest)
+		return
+	}
 	if req.ThrottleSeconds < 0 {
 		http.Error(w, "throttle_seconds must not be negative", http.StatusBadRequest)
 		return
@@ -2039,6 +2051,10 @@ func recipeIsComplete(card playback.RecipeCard) bool {
 // register sessionID. Returns nil if the spawn fails or the slot wait is canceled.
 func (s *Server) spawnReconstruct(r *http.Request, sessionID string, requestedSegment int, card playback.RecipeCard) (*playback.TranscodeSession, error) {
 	defer s.trackInFlight()()
+	if !validSessionID(sessionID) {
+		slog.WarnContext(r.Context(), "transcode node reconstruct session id rejected", "component", "transcodenode", "session", sessionID)
+		return nil, nil
+	}
 	if s.inputPaths == nil {
 		slog.ErrorContext(r.Context(), "transcode node reconstruct input authority unavailable", "component", "transcodenode", "session", sessionID)
 		return nil, nil
