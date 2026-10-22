@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -165,6 +166,36 @@ done
 	cancel()
 	if _, err := ExtractAttachedSubtitleFont(ctx, "input.mkv", ffmpeg, 7); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled single-font extraction: %v", err)
+	}
+}
+
+// Fansub releases often attach more font data than the bundle limit. The
+// bundle must keep the fonts that fit rather than fail and leave none.
+func TestExtractAttachedSubtitleFontsSkipsFontsOverByteLimit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script test helper is unix-only")
+	}
+	dir := t.TempDir()
+	ffmpeg := filepath.Join(dir, "ffmpeg")
+	big := maxSubtitleFontBytes/2 + 1
+	writeExecutable(t, filepath.Join(dir, "ffprobe"), fmt.Sprintf(`#!/bin/sh
+printf '%%s' '{"streams":[{"index":2,"extradata_size":%[1]d,"codec_name":"ttf","codec_type":"attachment","tags":{"filename":"big.ttf"}},{"index":3,"extradata_size":%[1]d,"codec_name":"ttf","codec_type":"attachment","tags":{"filename":"overflow.ttf"}},{"index":4,"extradata_size":5,"codec_name":"otf","codec_type":"attachment","tags":{"filename":"small.otf"}}]}'
+`, big))
+	writeExecutable(t, ffmpeg, fmt.Sprintf(`#!/bin/sh
+for arg do
+ case "$arg" in
+  -dump_attachment:2) head -c %d /dev/zero ;;
+  -dump_attachment:4) printf small ;;
+  -dump_attachment:*) exit 42 ;;
+ esac
+done
+`, big))
+	fonts, err := ExtractAttachedSubtitleFonts(t.Context(), "input.mkv", ffmpeg)
+	if err != nil {
+		t.Fatalf("ExtractAttachedSubtitleFonts returned error: %v", err)
+	}
+	if len(fonts) != 2 || fonts[0].Name != "big.ttf" || len(fonts[0].Data) != big || fonts[1].Name != "small.otf" || string(fonts[1].Data) != "small" {
+		t.Fatalf("fonts = %d, want big.ttf and small.otf", len(fonts))
 	}
 }
 
